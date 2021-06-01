@@ -17,7 +17,7 @@ def create_parser():
 
 class PubSubChecker:
 
-    def __init__(self, topic_path, sub_path, ):
+    def __init__(self, topic_path, sub_path):
         self.topic_path = topic_path
         self.sub_path = sub_path
 
