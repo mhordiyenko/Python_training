@@ -3,95 +3,86 @@
 #                       python create_topic_and_subscription.py -pid some_project_id -t some_topic -sn some_subscription
 #                       python create_topic_and_subscription.py -pid some_project_id -t some_topic
 import argparse
-from google.cloud import pubsub_v1
 import google.api_core.exceptions
+from google.cloud import pubsub_v1
 
 
-def create_parser():
+class PubSubCreator:
+
+    def create(self):
+        pass
+
+class PubSubTopicCreator(PubSubCreator):
+
+    def __init__(self, publisher_obj, project_id_obj, topic_name_obj):
+        self.publisher = publisher_obj
+        self.project_id = project_id_obj
+        self.topic_name = topic_name_obj
+
+    def create(self):
+        topic_path = publisher.topic_path(project=self.project_id, topic=self.topic_name)
+        try:
+            self.publisher.get_topic(topic=topic_path)
+            return print(f"The topic '{topic_path}' already exists.")
+        except google.api_core.exceptions.NotFound:
+            print('Create new topic -> in progress')
+            result = self.publisher.create_topic(name=topic_path)
+            return print(f"The topic '{result.name}' is crated.")
+
+
+class PubSubSubscriptionCreator(PubSubCreator):
+
+    def __init__(self, publisher_obj, subscriber_obj, project_id_obj, topic_name_obj, subscription_name_obj):
+        self.publisher = publisher_obj
+        self.subscriber = subscriber_obj
+        self.project_id = project_id_obj
+        self.topic_name = topic_name_obj
+        self.subscription_name = subscription_name_obj
+
+    def create(self):
+        subscription_path = self.subscriber.subscription_path(project=self.project_id,
+                                                              subscription=self.subscription_name)
+        try:
+            self.subscriber.get_subscription(subscription=subscription_path)
+            return print(f"The subscription '{subscription_path}' already exists.")
+        except google.api_core.exceptions.NotFound:
+            print('Create new subscription -> in progress')
+            topic_path = self.publisher.topic_path(project=self.project_id, topic=self.topic_name)
+            result = self.subscriber.create_subscription(name=subscription_path, topic=topic_path)
+            return print(f"The subscription '{result.name}' is crated.")
+
+
+def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-pid', '--project_id', default='', help='Project ID. example: my-new-project')
     parser.add_argument('-t', '--topic', default='', help='Topic name. example: My_Topic')
     parser.add_argument('-sn', '--subscription_name', default='', help='Subscription name. example: my-sub')
-    return parser
-
-
-class PubSubChecker:
-
-    def __init__(self, topic_path, sub_path):
-        self.topic_path = topic_path
-        self.sub_path = sub_path
-
-    def if_topic_exist(self):
-        try:
-            publisher.get_topic(topic=self.topic_path)
-            return True
-        except google.api_core.exceptions.NotFound:
-            return False
-
-    def if_subscription_exist(self):
-        try:
-            subscriber.get_subscription(subscription=self.sub_path)
-            return True
-        except google.api_core.exceptions.NotFound:
-            return False
-
-
-class PubSubTopicCreator:
-
-    def __init__(self, topic_path):
-        self.topic_path = topic_path
-
-    def create_new_topic(self):
-        if check.if_topic_exist():
-            print(f"The topic '{self.topic_path}' already exists.")
-        else:
-            print('Create new topic -> in progress')
-            result = publisher.create_topic(name=self.topic_path)
-            print(f"The topic '{result.name}' is crated.")
-
-
-class PubSubSubscriptionCreator:
-
-    def __init__(self, sub_path, topic_path):
-        self.sub_path = sub_path
-        self.topic_path = topic_path
-
-    def create_new_subscription(self):
-        if check.if_topic_exist() & check.if_subscription_exist():
-            print(f"The subscription '{self.sub_path}' already exists.")
-        else:
-            print('Create new subscription -> in progress')
-            result = subscriber.create_subscription(name=self.sub_path, topic=self.topic_path)
-            print(f"The subscription '{result.name}' is crated.")
-
-
-def check_inserted_params_and_run(p):  # p requires param value
-    if p.project_id == '' and p.topic == '' and p.subscription_name == '':
+    parameter = parser.parse_args()
+    if (not parameter.project_id) or (parameter.project_id == ''):
         print('\nPlease input -pid, -t, -sn parameters to create topic and subscription or -pid, -t to create just '
               'topic.')
-
-    if p.project_id != '' and p.topic != '' and p.subscription_name == '':
-        print('\n')
-
-        topic = PubSubTopicCreator(topic_path)
-        topic.create_new_topic()
-
-    if param.project_id != '' and param.topic != '' and param.subscription_name != '':
-        print('\n')
-
-        topic = PubSubTopicCreator(topic_path)
-        subscription = PubSubSubscriptionCreator(subscription_path, topic_path)
-
-        topic.create_new_topic()
-        subscription.create_new_subscription()
+        exit(1)
+    if (not parameter.topic) or parameter.topic == '':
+        print('\nPlease input -pid, -t, -sn parameters to create topic and subscription or -pid, -t to create just '
+              'topic.')
+        exit(1)
+    if (not parameter.subscription_name) or parameter.subscription_name == '':
+        subscription_name_inserted_obj = False
+    else:
+        subscription_name_inserted_obj = True
+    return parameter.project_id, parameter.topic, parameter.subscription_name, subscription_name_inserted_obj
 
 
-parser = create_parser()
-param = parser.parse_args()
-publisher = pubsub_v1.PublisherClient()
-subscriber = pubsub_v1.SubscriberClient()
-topic_path = publisher.topic_path(project=param.project_id, topic=param.topic)
-subscription_path = subscriber.subscription_path(project=param.project_id, subscription=param.subscription_name)
-check = PubSubChecker(topic_path, subscription_path)
+if __name__ == '__main__':
+    project_id, topic_name, subscription_name, subscription_name_inserted = parse_arguments()
+    publisher = pubsub_v1.PublisherClient()
+    subscriber = pubsub_v1.SubscriberClient()
 
-check_inserted_params_and_run(param)
+    topic_creator = PubSubTopicCreator(publisher_obj=publisher, project_id_obj=project_id,
+                                       topic_name_obj=topic_name)
+    topic_creator.create()
+    if subscription_name_inserted:
+        subscription_creator = PubSubSubscriptionCreator(publisher_obj=publisher, subscriber_obj=subscriber,
+                                                         project_id_obj=project_id, topic_name_obj=topic_name,
+                                                         subscription_name_obj=subscription_name)
+        subscription_creator.create()
