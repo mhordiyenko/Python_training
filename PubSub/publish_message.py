@@ -1,7 +1,8 @@
-# Pub/Sub: Publsih message
+# Pub/Sub: Publish message
 # how to run example (cmd):
 #                       python create_topic_and_subscription.py -pid some_project_id -t some_topic
 import argparse
+import google.api_core.exceptions
 from google.cloud import pubsub_v1
 
 
@@ -16,7 +17,7 @@ def parse_arguments():
     if (not parameter.topic) or parameter.topic == '':
         print('\nPlease input -pid (project_id), -t (topic name) parameters to send a message')
         exit(1)
-    return parameter.project_id, parameter.topic,
+    return parameter.project_id, parameter.topic
 
 
 class PubSubMessageSender:
@@ -28,10 +29,15 @@ class PubSubMessageSender:
     def send_message(self):
         publisher = pubsub_v1.PublisherClient()
         topic_path = publisher.topic_path(project=self.project_id, topic=self.topic_name)
-        print('Please type your message: ')
-        message_publisher = publisher.publish(topic_path, str.encode(input()))
-        message_id = message_publisher.result()
-        print(f"The message is successfully sent to the '{self.topic_name}' topic. The message id is: {message_id}")
+        try:
+            publisher.get_topic(topic=topic_path)
+            print('Please type your message: ')
+            message_publisher = publisher.publish(topic_path, str.encode(input()))
+            message_id = message_publisher.result()
+            return print(f"The message is successfully sent to the '{self.topic_name}' topic."
+                         f" The message id is: {message_id}")
+        except google.api_core.exceptions.NotFound:
+            return print(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
 
 
 if __name__ == '__main__':
