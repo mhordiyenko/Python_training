@@ -46,24 +46,24 @@ def parse_arguments():
     parser.add_argument('-pid', '--project_id', default='', help='Project ID. example: my-new-project')
     parser.add_argument('-t', '--topic', default='', help='Topic name. example: My_Topic')
     parser.add_argument('-sn', '--subscription_name', default='', help='Subscription name. example: my-sub')
-    return parser
-
-
-def check_input_arguments(parser):
     parameter = parser.parse_args()
-    if not parameter.project_id:
-        print('\nPlease input -pid, -t, -sn parameters to create topic and subscription or -pid, -t to create just '
-              'topic.')
-        exit(1)
-    if not parameter.topic:
-        print('\nPlease input -pid, -t, -sn parameters to create topic and subscription or -pid, -t to create just '
-              'topic.')
-        exit(1)
     return parameter.project_id, parameter.topic, parameter.subscription_name
 
 
+def arguments_validation(project_id, topic_name):
+
+    if not project_id:
+        print('\nProject Id parameter missing. Please input it with -pid')
+        exit(1)
+    if not topic_name:
+        print('\nTopic name parameter missing. Please input it with -t.')
+        exit(1)
+
+
+
 if __name__ == '__main__':
-    project_id, topic_name, subscription_name = check_input_arguments(parse_arguments())
+    project_id, topic_name, subscription_name = parse_arguments()
+    arguments_validation(project_id, topic_name)
     pubsub_publisher = pubsub_v1.PublisherClient()
     pubsub_subscriber = pubsub_v1.SubscriberClient()
 
