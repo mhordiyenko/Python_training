@@ -8,22 +8,28 @@ from google.cloud import pubsub_v1
 
 class PubSubMessageSender:
 
-    def __init__(self, project_id_obj, topic_name_obj):
-        self.project_id = project_id_obj
-        self.topic_name = topic_name_obj
+    def __init__(self, publisher, project_id, topic_name):
+        self.publisher = publisher
+        self.project_id = project_id
+        self.topic_name = topic_name
+
+    def is_topic_exists(self, topic_path):
+        try:
+            topic = self.publisher.get_topic(topic=topic_path)
+            return topic is not None
+        except google.api_core.exceptions.NotFound:
+            print(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
+            return False
 
     def send_message(self):
-        publisher = pubsub_v1.PublisherClient()
-        topic_path = publisher.topic_path(project=self.project_id, topic=self.topic_name)
-        try:
-            publisher.get_topic(topic=topic_path)
+
+        topic_path = self.publisher.topic_path(project=self.project_id, topic=self.topic_name)
+        if self.is_topic_exists(topic_path):
             print('Please type your message: ')
-            message_publisher = publisher.publish(topic_path, str.encode(input()))
+            message_publisher = self.publisher.publish(topic_path, str.encode(input()))
             message_id = message_publisher.result()
-            return print(f"The message is successfully sent to the '{self.topic_name}' topic."
-                         f" The message id is: {message_id}")
-        except google.api_core.exceptions.NotFound:
-            return print(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
+            print(f"The message is successfully sent to the '{self.topic_name}' topic. The message id is: {message_id}")
+            return True
 
 
 def parse_arguments():
@@ -36,15 +42,14 @@ def parse_arguments():
 
 def arguments_validation(project_id, topic_name):
     if not project_id:
-        print('\nPlease input -pid (project_id) parameter to send a message')
-        raise Exception('project_id missing')
+        raise Exception('\nThe -pid (project_id) parameter missing. Please input it to send a message')
     if not topic_name:
-        print('\nPlease input -t (topic_name) parameter to send a message')
-        raise Exception('topic_name missing')
+        raise Exception('\nThe -t (topic_name) parameter missing. Please input it to send a message')
 
 
 if __name__ == '__main__':
     project_id, topic_name = parse_arguments()
     arguments_validation(project_id, topic_name)
-    new_message = PubSubMessageSender(project_id_obj=project_id, topic_name_obj=topic_name)
+    pubsub_publisher = pubsub_v1.PublisherClient()
+    new_message = PubSubMessageSender(pubsub_publisher, project_id, topic_name)
     new_message.send_message()
