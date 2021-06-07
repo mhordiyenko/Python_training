@@ -2,6 +2,7 @@
 # how to run example (cmd):
 #                       python publish_message.py -pid some_project_id -t some_topic
 import argparse
+import logging
 import google.api_core.exceptions
 from google.cloud import pubsub_v1
 
@@ -18,7 +19,7 @@ class PubSubMessageSender:
             topic = self.publisher.get_topic(topic=topic_path)
             return topic is not None
         except google.api_core.exceptions.NotFound:
-            print(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
+            logging.warning(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
             return False
 
     def send_message(self):
@@ -28,7 +29,7 @@ class PubSubMessageSender:
             print('Please type your message: ')
             message_publisher = self.publisher.publish(topic_path, str.encode(input()))
             message_id = message_publisher.result()
-            print(f"The message is successfully sent to the '{self.topic_name}' topic. The message id is: {message_id}")
+            logging.info(f"The message is successfully sent to the '{self.topic_name}' topic. The message id is: {message_id}")
             return True
 
 
@@ -40,7 +41,7 @@ def parse_arguments():
     return parameter.project_id, parameter.topic
 
 
-def arguments_validation(project_id, topic_name):
+def validate_arguments(project_id, topic_name):
     if not project_id:
         raise Exception('\nThe -pid (project_id) parameter missing. Please input it to send a message')
     if not topic_name:
@@ -49,7 +50,8 @@ def arguments_validation(project_id, topic_name):
 
 if __name__ == '__main__':
     project_id, topic_name = parse_arguments()
-    arguments_validation(project_id, topic_name)
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    validate_arguments(project_id, topic_name)
     pubsub_publisher = pubsub_v1.PublisherClient()
     new_message = PubSubMessageSender(pubsub_publisher, project_id, topic_name)
     new_message.send_message()

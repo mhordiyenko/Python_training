@@ -3,6 +3,7 @@
 #                       python create_topic_and_subscription.py -pid some_project_id -t some_topic -sn some_subscription
 #                       python create_topic_and_subscription.py -pid some_project_id -t some_topic
 import argparse
+import logging
 import google.api_core.exceptions
 from google.cloud import pubsub_v1
 
@@ -15,7 +16,7 @@ class PubSubTopicCreator:
     def is_topic_exists(self, topic_path):
         try:
             topic = self.publisher.get_topic(topic=topic_path)
-            print(f"The topic '{topic_path}' already exists.")
+            logging.warning(f"The topic '{topic_path}' already exists.")
             return topic is not None
         except google.api_core.exceptions.NotFound:
             return False
@@ -23,9 +24,9 @@ class PubSubTopicCreator:
     def create_new_topic(self, project_id, topic_name):
         topic_path = self.publisher.topic_path(project_id, topic_name)
         if not self.is_topic_exists(topic_path):
-            print('Create new topic -> in progress')
+            logging.info('Create new topic -> in progress')
             result = self.publisher.create_topic(name=topic_path)
-            print(f"The topic '{result.name}' is crated.")
+            logging.info(f"The topic '{result.name}' is crated.")
             return True
 
 
@@ -40,7 +41,7 @@ class PubSubSubscriptionCreator:
 
         try:
             subscription = self.subscriber.get_subscription(subscription=subscription_path)
-            print(f"The subscription '{subscription_path}' already exists.")
+            logging.warning(f"The subscription '{subscription_path}' already exists.")
             return subscription is not None
         except google.api_core.exceptions.NotFound:
             return False
@@ -50,10 +51,10 @@ class PubSubSubscriptionCreator:
         subscription_path = self.subscriber.subscription_path(project_id, subscription_name)
 
         if not self.is_subscription_exists(subscription_path):
-            print('Create new subscription -> in progress')
+            logging.info('Create new subscription -> in progress')
             topic_path = self.publisher.topic_path(project=project_id, topic=topic_name)
             result = self.subscriber.create_subscription(name=subscription_path, topic=topic_path)
-            print(f"The subscription '{result.name}' is crated.")
+            logging.info(f"The subscription '{result.name}' is crated.")
             return True
 
 
@@ -66,7 +67,7 @@ def parse_arguments():
     return parameter.project_id, parameter.topic, parameter.subscription_name
 
 
-def arguments_validation(project_id, topic_name):
+def validate_arguments(project_id, topic_name):
     if not project_id:
         raise Exception('\nProject Id parameter missing. Please input it with -pid')
 
@@ -76,7 +77,8 @@ def arguments_validation(project_id, topic_name):
 
 if __name__ == '__main__':
     project_id, topic_name, subscription_name = parse_arguments()
-    arguments_validation(project_id, topic_name)
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    validate_arguments(project_id, topic_name)
     pubsub_publisher = pubsub_v1.PublisherClient()
     pubsub_subscriber = pubsub_v1.SubscriberClient()
 

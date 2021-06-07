@@ -2,6 +2,7 @@
 # how to run example (cmd):
 #                       python retrieve_message.py -pid some_project_id -sn some_subscription
 import argparse
+import logging
 import google.api_core.exceptions
 from google.cloud import pubsub_v1
 
@@ -34,8 +35,8 @@ class PubSubMessageRecipient:
             subscription = self.subscriber.get_subscription(subscription=subscription_path)
             return subscription is not None
         except google.api_core.exceptions.NotFound:
-            print(f"The subscription '{self.subscription_name}' does not exist in the '{self.project_id}'"
-                  f" project.")
+            logging.warning(f"The subscription '{self.subscription_name}' does not exist in the '{self.project_id}"
+                            f" project.")
             return False
 
     def retrieve_message(self):
@@ -54,6 +55,7 @@ class PubSubMessageRecipient:
 
 if __name__ == '__main__':
     project_id, subscription_name = parse_arguments()
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
     arguments_validation(project_id, subscription_name)
     pubsub_subscriber = pubsub_v1.SubscriberClient()
     message_recipient = PubSubMessageRecipient(pubsub_subscriber, project_id, subscription_name)
