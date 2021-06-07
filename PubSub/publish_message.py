@@ -1,40 +1,57 @@
+# Pub/Sub: Publish message
+# how to run example (cmd):
+#                       python publish_message.py -pid some_project_id -t some_topic
 import argparse
+import logging
+import google.api_core.exceptions
 from google.cloud import pubsub_v1
-
-
-def create_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-pid', '--project_id', default='', help='Project ID. example: my-new-project')
-    parser.add_argument('-t', '--topic', default='', help='Topic name. example: My_Topic')
-    return parser
 
 
 class PubSubMessageSender:
 
-    def __init__(self, topic_path, param):
-        self.topic_path = topic_path
-        self.param = param
+    def __init__(self, publisher, project_id, topic_name):
+        self.publisher = publisher
+        self.project_id = project_id
+        self.topic_name = topic_name
+
+    def is_topic_exists(self, topic_path):
+        try:
+            topic = self.publisher.get_topic(topic=topic_path)
+            return topic is not None
+        except google.api_core.exceptions.NotFound:
+            logging.warning(f"The topic '{topic_name}' does not exist in the '{project_id}' project.")
+            return False
 
     def send_message(self):
-        print('Please type your message: ')
-        message = publisher.publish(self.topic_path, str.encode(input()))
-        message_id = message.result()
-        print(f"The message is successfully sent to the '{self.param.topic}' topic. The message id is: {message_id}")
+
+        topic_path = self.publisher.topic_path(project=self.project_id, topic=self.topic_name)
+        if self.is_topic_exists(topic_path):
+            print('Please type your message: ')
+            message_publisher = self.publisher.publish(topic_path, str.encode(input()))
+            message_id = message_publisher.result()
+            logging.info(f"The message is successfully sent to the '{self.topic_name}' topic. The message id is: {message_id}")
+            return True
 
 
-def check_inserted_params_and_run(param):  # param requires param value
-    if (param.project_id == '' and param.topic == '') or (param.project_id != '' and param.topic == ''):
-        print('\nPlease input -pid (project_id), -t (topic name) parameters to send a message')
-
-    if param.project_id != '' and param.topic != '':
-        print('\n')
-        new_message = PubSubMessageSender(topic_path=topic_path, param=param)
-        new_message.send_message()
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-pid', '--project_id', default='', help='Project ID. example: my-new-project')
+    parser.add_argument('-t', '--topic', default='', help='Topic name. example: My_Topic')
+    parameter = parser.parse_args()
+    return parameter.project_id, parameter.topic
 
 
-publisher = pubsub_v1.PublisherClient()
-parser = create_parser()
-param = parser.parse_args()
+def validate_arguments(project_id, topic_name):
+    if not project_id:
+        raise Exception('\nThe -pid (project_id) parameter missing. Please input it to send a message')
+    if not topic_name:
+        raise Exception('\nThe -t (topic_name) parameter missing. Please input it to send a message')
 
-topic_path = publisher.topic_path(project=param.project_id, topic=param.topic)
-check_inserted_params_and_run(param=param)
+
+if __name__ == '__main__':
+    project_id, topic_name = parse_arguments()
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    validate_arguments(project_id, topic_name)
+    pubsub_publisher = pubsub_v1.PublisherClient()
+    new_message = PubSubMessageSender(pubsub_publisher, project_id, topic_name)
+    new_message.send_message()
