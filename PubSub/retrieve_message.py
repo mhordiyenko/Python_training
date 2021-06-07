@@ -46,10 +46,25 @@ class PubSubMessageRecipient:
         if self.is_subscription_exists(subscription_path):
             def callback(message):
                 print(message.data)
-                # message.ack()
 
-            message_requester = self.subscriber.subscribe(subscription_path, callback=callback,
-                                                          await_callbacks_on_shutdown=True)
+            def callback_with_ack(message):
+                print(message.data)
+                message.ack()
+
+            while True:
+                print("Do you want to switch on message acknowledge? (yes/no)")
+                acknowledge_is_active = input()
+                if acknowledge_is_active == 'yes':
+                    message_requester = self.subscriber.subscribe(subscription_path, callback=callback_with_ack,
+                                                                  await_callbacks_on_shutdown=True)
+                    break
+                if acknowledge_is_active == 'no':
+                    message_requester = self.subscriber.subscribe(subscription_path, callback=callback,
+                                                                  await_callbacks_on_shutdown=True)
+                    break
+                else:
+                    continue
+
             return message_requester.result()
 
 
